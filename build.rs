@@ -85,7 +85,25 @@ fn install_android_deps() {
     println!("cargo:rustc-link-lib=OpenSLES");
 }
 
+fn bake_cranix_settings() {
+    println!("cargo:rerun-if-changed=cranix.conf");
+    let Ok(conf) = std::fs::read_to_string("cranix.conf") else {
+        return;
+    };
+    for line in conf.lines() {
+        let Some((k, v)) = line.split_once('=') else {
+            continue;
+        };
+        match k.trim() {
+            "id_server" => println!("cargo:rustc-env=CRANIX_ID_SERVER={}", v.trim()),
+            "key" => println!("cargo:rustc-env=CRANIX_KEY={}", v.trim()),
+            _ => {}
+        }
+    }
+}
+
 fn main() {
+    bake_cranix_settings();
     hbb_common::gen_version();
     install_android_deps();
     #[cfg(all(windows, feature = "inline"))]
