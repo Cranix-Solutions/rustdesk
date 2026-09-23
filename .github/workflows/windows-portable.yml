@@ -71,20 +71,22 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r libs/portable/requirements.txt
 
+
       - name: Install vcpkg libraries
         shell: bash
         run: |
-          # Discover the actual vcpkg root from the installed binary
-          VCPKG_ROOT="$(dirname "$(command -v vcpkg)")"
+          export VCPKG_ROOT="$PWD"
+          export VCPKG_INSTALL_ROOT="$PWD/vcpkg_installed"
+          export VCPKG_DEFAULT_TRIPLET=x64-windows-static
+
           echo "VCPKG_ROOT=$VCPKG_ROOT" >> "$GITHUB_ENV"
-          echo "VCPKG_DEFAULT_TRIPLET=x64-windows-static" >> "$GITHUB_ENV"
-          echo "CMAKE_PREFIX_PATH=$VCPKG_ROOT/installed/x64-windows-static" >> "$GITHUB_ENV"
-          echo "PKG_CONFIG_PATH=$VCPKG_ROOT/installed/x64-windows-static/lib/pkgconfig" >> "$GITHUB_ENV"
+          echo "VCPKG_DEFAULT_TRIPLET=$VCPKG_DEFAULT_TRIPLET" >> "$GITHUB_ENV"
+          echo "CMAKE_PREFIX_PATH=$VCPKG_INSTALL_ROOT/x64-windows-static" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=$VCPKG_INSTALL_ROOT/x64-windows-static/lib/pkgconfig" >> "$GITHUB_ENV"
 
-          vcpkg install --triplet=x64-windows-static
+          vcpkg install --triplet=x64-windows-static --x-install-root="$VCPKG_INSTALL_ROOT"
 
-          ls -la "$VCPKG_ROOT/installed/x64-windows-static/include/opus" || true
-          test -f "$VCPKG_ROOT/installed/x64-windows-static/include/opus/opus_multistream.h"
+          test -f "$VCPKG_INSTALL_ROOT/x64-windows-static/include/opus/opus_multistream.h"
 
 #     - name: Install vcpkg libraries
 #       run: |
