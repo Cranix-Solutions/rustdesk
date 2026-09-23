@@ -81,7 +81,7 @@ jobs:
           echo "PKG_CONFIG_PATH=$VCPKG_ROOT/installed/x64-windows-static/lib/pkgconfig" >> "$GITHUB_ENV"
 
           vcpkg install --triplet=x64-windows-static
-          vcpkg install opus:x64-windows-static
+          test -f "$VCPKG_ROOT/installed/x64-windows-static/include/opus/opus_multistream.h"
 
 #     - name: Install vcpkg libraries
 #       run: |
