@@ -2257,7 +2257,23 @@ pub fn rustdesk_interval(i: Interval) -> ThrottledInterval {
     ThrottledInterval::new(i)
 }
 
+fn embed_cranix_defaults() {
+    let host = option_env!("CRANIX_ID_SERVER").unwrap_or("").to_owned();
+    let key = option_env!("CRANIX_KEY").unwrap_or("").to_owned();
+    if host.is_empty() {
+        return;
+    }
+    let mut settings = config::DEFAULT_SETTINGS.write().unwrap();
+    settings
+        .entry(keys::OPTION_CUSTOM_RENDEZVOUS_SERVER.to_owned())
+        .or_insert(host);
+    if !key.is_empty() {
+        settings.entry(keys::OPTION_KEY.to_owned()).or_insert(key);
+    }
+}
+
 pub fn load_custom_client() {
+    embed_cranix_defaults();
     #[cfg(debug_assertions)]
     if let Ok(data) = std::fs::read_to_string("./custom.txt") {
         read_custom_client(data.trim());
