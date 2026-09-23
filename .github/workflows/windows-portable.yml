@@ -80,7 +80,8 @@ jobs:
           echo "CMAKE_PREFIX_PATH=$VCPKG_ROOT/installed/x64-windows-static" >> "$GITHUB_ENV"
           echo "PKG_CONFIG_PATH=$VCPKG_ROOT/installed/x64-windows-static/lib/pkgconfig" >> "$GITHUB_ENV"
 
-          vcpkg install opus:x64-windows-static --triplet=x64-windows-static
+          vcpkg install --triplet=x64-windows-static
+          vcpkg install opus:x64-windows-static
 
 #     - name: Install vcpkg libraries
 #       run: |
