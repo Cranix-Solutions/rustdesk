@@ -74,13 +74,16 @@ jobs:
       - name: Install vcpkg libraries
         shell: bash
         run: |
-          export VCPKG_ROOT="${VCPKG_INSTALLATION_ROOT:-$LOCALAPPDATA/vcpkg}"
+          # Discover the actual vcpkg root from the installed binary
+          VCPKG_ROOT="$(dirname "$(command -v vcpkg)")"
           echo "VCPKG_ROOT=$VCPKG_ROOT" >> "$GITHUB_ENV"
           echo "VCPKG_DEFAULT_TRIPLET=x64-windows-static" >> "$GITHUB_ENV"
           echo "CMAKE_PREFIX_PATH=$VCPKG_ROOT/installed/x64-windows-static" >> "$GITHUB_ENV"
           echo "PKG_CONFIG_PATH=$VCPKG_ROOT/installed/x64-windows-static/lib/pkgconfig" >> "$GITHUB_ENV"
 
           vcpkg install --triplet=x64-windows-static
+
+          ls -la "$VCPKG_ROOT/installed/x64-windows-static/include/opus" || true
           test -f "$VCPKG_ROOT/installed/x64-windows-static/include/opus/opus_multistream.h"
 
 #     - name: Install vcpkg libraries
@@ -102,6 +105,7 @@ jobs:
           VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
           VCPKG_DEFAULT_TRIPLET: x64-windows-static
         run: |
+          cargo clean
           python build.py --flutter --portable --skip-portable-pack
 
       - name: Copy custom config next to the exe
