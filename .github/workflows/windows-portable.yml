@@ -106,6 +106,8 @@ jobs:
         env:
           VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
           VCPKG_DEFAULT_TRIPLET: x64-windows-static
+          CMAKE_PREFIX_PATH: ${{ env.CMAKE_PREFIX_PATH }}
+          PKG_CONFIG_PATH: ${{ env.PKG_CONFIG_PATH }}
         run: |
           cargo clean
           python build.py --flutter --portable --skip-portable-pack
