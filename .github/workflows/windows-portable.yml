@@ -1,0 +1,140 @@
+name: Build Windows portable
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-portable:
+    name: Windows portable
+    runs-on: windows-2022
+    timeout-minutes: 90
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Verify repository dependencies
+        shell: bash
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
+          git submodule status --recursive
+
+          test -f libs/hbb_common/Cargo.toml || {
+            echo "::error::libs/hbb_common/Cargo.toml is missing"
+            exit 1
+          }
+
+          test -f libs/base/Cargo.toml || {
+            echo "::error::libs/base/Cargo.toml is missing"
+            exit 1
+          }
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.75.0-x86_64-pc-windows-msvc
+          targets: x86_64-pc-windows-msvc
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: libs/portable/requirements.txt
+
+      - name: Install build dependencies
+        run: |
+          flutter config --enable-windows-desktop
+          flutter pub get --directory flutter
+          python -m pip install --upgrade pip
+          python -m pip install -r libs/portable/requirements.txt
+
+      - name: Install vcpkg libraries
+        run: |
+          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+          echo "VCPKG_DEFAULT_TRIPLET=x64-windows-static" >> "$GITHUB_ENV"
+
+          vcpkg install --triplet=x64-windows-static
+#     - name: Install vcpkg libraries
+#       run: |
+#         vcpkg install \
+#           libvpx:x64-windows-static \
+#           libyuv:x64-windows-static \
+#           opus:x64-windows-static \
+#           aom:x64-windows-static
+#         echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+#         echo "VCPKG_DEFAULT_TRIPLET=x64-windows-static" >> "$GITHUB_ENV"
+
+      - name: Verify custom server config exists
+        run: |
+          test -s src/custom.txt
+
+      - name: Build Windows desktop app
+        env:
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+          VCPKG_DEFAULT_TRIPLET: x64-windows-static
+        run: |
+          python build.py --flutter --portable --skip-portable-pack
+
+      - name: Copy custom config next to the exe
+        run: |
+          ls -R flutter/build/windows/x64/runner/Release || true
+          cp src/custom.txt flutter/build/windows/x64/runner/Release/custom.txt
+
+      - name: Build portable package
+        run: |
+          cd libs/portable
+          python generate.py \
+            -f ../../flutter/build/windows/x64/runner/Release \
+            -o . \
+            -e ../../flutter/build/windows/x64/runner/Release/rustdesk.exe
+          cd ../..
+          ls -lh libs/portable
+
+      - name: Prepare portable output name
+        run: |
+          if [ -f libs/portable/data.bin ]; then
+            cp libs/portable/data.bin rustdesk-windows-portable.bin
+          fi
+          ls -lh rustdesk-windows-portable.bin 2>/dev/null || true
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustdesk-windows-portable
+          path: |
+            rustdesk-windows-portable.bin
+            libs/portable/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish release asset
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            libs/portable/*
+            rustdesk-windows-portable.bin
+          generate_release_notes: true
